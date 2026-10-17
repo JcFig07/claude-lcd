@@ -306,7 +306,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
     var content = [];
     if (photo) content.push({ type: 'image', source: { type: 'base64', media_type: photo.media_type, data: photo.data } });
-    content.push({ type: 'text', text: text || '¿Qué ves en esta foto?' });
+    content.push({ type: 'text', text: text || 'Responde de manera concisa y precisa a lo que ves en la imagen. Si es un ejercicio que involucre un procedimiento matemático, ahí y solo ahí explícalo paso a paso.' });
     var hadPhoto = !!photo;
 
     history.push({ role: 'user', content: content });
@@ -318,7 +318,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     sendEl.disabled = true; camEl.disabled = true;
     resetTyping();
     streamDone = false;
-    setScreen('> ' + (text || '¿QUE ES ESTO?') + (hadPhoto ? ' [IMG]' : ''), '', true);
+    setScreen('> ' + (text || 'ANALIZA LA FOTO') + (hadPhoto ? ' [IMG]' : ''), '', true);
 
     streamReply().then(function (res) {
       finishTyping(function () {
