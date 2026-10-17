@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Chat LCD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&amp;family=Silkscreen&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.lcd{background-color:#9bbc0f;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(0,0,0,0.035) 0 1px,transparent 1px 3px);box-shadow:inset 0 2px 4px rgba(48,98,48,0.15)}
+.ink{color:#306230;text-shadow:1px 1px 0 rgba(15,56,15,0.18)}
+.key{font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:1px;color:#306230;background:#90b111;border:0;border-radius:5px;box-shadow:0 2px 0 rgba(48,98,48,0.3),inset 0 1px 0 rgba(255,255,255,0.12);min-height:44px;min-width:44px;padding:0 10px;cursor:pointer}
+.key-accent{color:#306230;background:#a0c014;box-shadow:0 2px 0 rgba(48,98,48,0.3),inset 0 1px 0 rgba(255,255,255,0.18)}
+.dither{background-color:#9bbc0f;background-image:radial-gradient(#306230 1px,transparent 1.2px),radial-gradient(#306230 1px,transparent 1.2px);background-size:4px 4px,4px 4px;background-position:0 0,2px 2px}
+</style>
+</head>
+<body>
+<div style="width: 375px; height: 667px; display: flex; flex-direction: column; background: #000000; font-family: 'VT323', monospace">
+  <div style="height: 133px; box-sizing: border-box; background: #86a614; padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0">
+    <div class="lcd ink" style="height: 70px; box-sizing: border-box; border-radius: 4px; border: 2px solid #8eae12; padding: 4px 8px; display: flex; flex-direction: column; gap: 1px; font-size: 18px; line-height: 1.05; overflow: hidden">
+      <div style="display: flex; justify-content: space-between; font-size: 14px; opacity: 0.7">
+        <span>&gt; QUE PLANTA ES ESTA? [IMG]</span>
+        <span>▲▼</span>
+      </div>
+      <div>MONSTERA DELICIOSA. LUZ INDIRECTA Y RIEGO CUANDO LA TIERRA SECA, UNA VEZ POR SEMANA<span style="background: #306230; color: #9bbc0f">█</span></div>
+    </div>
+    <div style="display: flex; gap: 6px; align-items: stretch">
+      <button class="key" aria-label="Adjuntar foto (foto lista)" style="padding: 0; width: 44px; display: flex; align-items: center; justify-content: center">
+        <span class="dither" aria-hidden="true" style="width: 22px; height: 17px; display: block; border: 1px solid #86a614"></span>
+      </button>
+      <label for="msg" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Mensaje</label>
+      <input id="msg" class="lcd ink" placeholder="ESCRIBE_" style="flex-grow: 1; min-width: 0; font-family: 'VT323', monospace; font-size: 20px; border: 2px solid #8eae12; border-radius: 4px; padding: 0 8px; min-height: 44px; box-sizing: border-box">
+      <button class="key key-accent">ENVIAR</button>
+    </div>
+  </div>
+  <div style="flex-grow: 1; margin: 12px; border: 2px dashed #1c2a0c; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Silkscreen', monospace; font-size: 11px; letter-spacing: 1px; color: #4a5e1c">TU OTRO CONTENIDO · 80%</div>
+</div>
+</body>
+</html>

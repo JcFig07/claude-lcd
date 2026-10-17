@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Claude LCD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Claude LCD">
+<meta name="theme-color" content="#000000">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&amp;family=Silkscreen&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;background:#000000}
+body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;background:#000000}
+
+/* Estilos de las maquetas (diseno/) */
+.lcd{background-color:#9bbc0f;background-image:repeating-linear-gradient(0deg,rgba(0,0,0,0.035) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(0,0,0,0.035) 0 1px,transparent 1px 3px);box-shadow:inset 0 2px 4px rgba(48,98,48,0.15)}
+.ink{color:#306230;text-shadow:1px 1px 0 rgba(15,56,15,0.18)}
+.key{font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:1px;color:#306230;background:#90b111;border:0;border-radius:5px;box-shadow:0 2px 0 rgba(48,98,48,0.3),inset 0 1px 0 rgba(255,255,255,0.12);min-height:44px;min-width:44px;padding:0 10px;cursor:pointer;-webkit-appearance:none;appearance:none;text-transform:uppercase;flex-shrink:0}
+.key-accent{color:#306230;background:#a0c014;box-shadow:0 2px 0 rgba(48,98,48,0.3),inset 0 1px 0 rgba(255,255,255,0.18)}
+.key:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(48,98,48,0.3)}
+.key:disabled{opacity:.6}
+
+/* Franja: 20% superior */
+.strip{height:20vh;box-sizing:border-box;background:#86a614;padding:6px 8px 8px;display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.strip[hidden]{display:none}
+.screen{flex:1 1 auto;min-height:0;box-sizing:border-box;border-radius:4px;border:2px solid #8eae12;padding:4px 8px;display:flex;flex-direction:column;gap:1px;font-size:18px;line-height:1.05;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.head{display:flex;justify-content:space-between;gap:8px;font-size:14px;opacity:.7;flex-shrink:0}
+.head span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.head span:last-child{flex-shrink:0}
+.out{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;word-wrap:break-word;overflow-wrap:break-word;white-space:pre-wrap;-webkit-user-select:text;user-select:text;scrollbar-width:none}
+.out::-webkit-scrollbar{display:none}
+.cursor{background:#306230;color:#9bbc0f;text-shadow:none;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.row{display:flex;gap:6px;align-items:stretch;flex-shrink:0}
+.field{flex-grow:1;min-width:0;font-family:'VT323',monospace;font-size:20px;border:2px solid #8eae12;border-radius:4px;padding:0 8px;min-height:44px;box-sizing:border-box;outline:none;-webkit-appearance:none;appearance:none;text-transform:uppercase}
+.field::placeholder{color:#306230;opacity:.55}
+.field:focus{border-color:#7f9e10}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* Botón de cámara */
+#cam{padding:0;width:44px;display:flex;align-items:center;justify-content:center;position:relative}
+#cam svg{width:22px;height:17px;display:block}
+#thumb{width:22px;height:17px;display:none;border:1px solid #86a614;image-rendering:pixelated;image-rendering:crisp-edges}
+#cam.has-photo svg{display:none}
+#cam.has-photo #thumb{display:block}
+#file{display:none}
+
+/* Selector de modelo: select invisible sobre la tecla MODELO */
+.pick{position:relative;flex-shrink:0;display:flex}
+.pick select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;-webkit-appearance:none;appearance:none;border:0}
+
+#libre{flex:1 1 auto;background:#000000}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- CHAT -->
+  <div class="strip" id="chat" hidden>
+    <div class="lcd ink screen" id="screen">
+      <div class="head"><span id="q">CLAUDE·8</span><span id="arrows"></span></div>
+      <div class="out" id="out"></div>
+    </div>
+    <div class="row">
+      <button class="key" id="cam" aria-label="Adjuntar foto">
+        <svg viewBox="0 0 11 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#306230" d="M3 0h4v1h3v1h1v5h-1v1H1V7H0V2h1V1h2zM1 2v5h9V2zm3 1h3v1h1v2H7v1H4V6H3V4h1zm0 1v2h3V4z"/></svg>
+        <canvas id="thumb" width="44" height="34" aria-hidden="true"></canvas>
+      </button>
+      <input type="file" id="file" accept="image/*" capture="environment">
+      <label for="msg" class="sr">Mensaje</label>
+      <input id="msg" class="lcd ink field" placeholder="ESCRIBE_" autocomplete="off" autocorrect="on" enterkeyhint="send">
+      <button class="key key-accent" id="send">ENVIAR</button>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="strip" id="config" hidden>
+    <div class="lcd ink screen">
+      <div class="head"><span>CLAUDE·8 / CONFIG</span><span id="modelName">SONNET</span></div>
+      <div class="out" id="cfgMsg">HOLA, CAMI. PEGA TU API KEY UNA VEZ. QUEDA SOLO EN ESTE TELEFONO.</div>
+    </div>
+    <div class="row">
+      <label for="key" class="sr">API key</label>
+      <input id="key" type="password" class="lcd ink field" placeholder="SK-ANT-..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <div class="pick">
+        <button class="key" tabindex="-1" aria-hidden="true">MODELO</button>
+        <label for="model" class="sr">Modelo</label>
+        <select id="model">
+          <option value="claude-sonnet-5-5">SONNET 5.5</option>
+          <option value="claude-opus-5-5">OPUS 5.5</option>
+          <option value="claude-haiku-5-5">HAIKU 5.5</option>
+        </select>
+      </div>
+      <button class="key key-accent" id="ok">OK</button>
+    </div>
+  </div>
+
+  <div id="libre"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API_URL = 'https://api.anthropic.com/v1/messages';
+  var DEFAULT_MODEL = 'claude-sonnet-5-5';
+  var SYSTEM_PROMPT = 'Responde siempre en español. Sé breve y directo: la respuesta se muestra en una pantalla diminuta de unas pocas líneas. ' +
+    'Ve al grano, sin introducciones, sin despedidas, sin listas largas y sin formato Markdown (nada de asteriscos, almohadillas ni tablas). ' +
+    'Si te envían una foto, céntrate en lo que se pregunta sobre ella.';
+  // Modelos con fallback del lado del servidor cuando un clasificador rechaza la petición.
+  var FALLBACK_MODELS = { 'claude-sonnet-5-5': 1, 'claude-opus-5-5': 1 };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var chatEl = $('chat'), configEl = $('config');
+  var screenEl = $('screen'), outEl = $('out'), qEl = $('q'), arrowsEl = $('arrows');
+  var msgEl = $('msg'), sendEl = $('send'), camEl = $('cam'), fileEl = $('file'), thumbEl = $('thumb');
+  var keyEl = $('key'), modelEl = $('model'), modelNameEl = $('modelName'), cfgMsgEl = $('cfgMsg'), okEl = $('ok');
+
+  // Historial completo en memoria (para la API); en pantalla solo el último intercambio.
+  var history = [];
+  var photo = null;      // { data: base64 sin prefijo, media_type }
+  var busy = false;
+
+  // ---------- almacenamiento ----------
+  function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function apiKey() { return load('lcd_api_key') || ''; }
+  function model() { return load('lcd_model') || DEFAULT_MODEL; }
+
+  // ---------- pantallas ----------
+  function shortName(m) {
+    var o = modelEl.querySelector('option[value="' + m + '"]');
+    return (o ? o.textContent : m).split(' ')[0];
+  }
+  function showConfig(msg) {
+    keyEl.value = apiKey();
+    modelEl.value = model();
+    modelNameEl.textContent = shortName(modelEl.value);
+    if (msg) cfgMsgEl.textContent = msg;
+    chatEl.hidden = true; configEl.hidden = false;
+  }
+  function showChat() {
+    configEl.hidden = true; chatEl.hidden = false;
+  }
+
+  modelEl.addEventListener('change', function () { modelNameEl.textContent = shortName(modelEl.value); });
+
+  okEl.addEventListener('click', function () {
+    var k = keyEl.value.trim();
+    if (!k) { cfgMsgEl.textContent = 'FALTA LA API KEY.'; keyEl.focus(); return; }
+    store('lcd_api_key', k);
+    store('lcd_model', modelEl.value);
+    keyEl.blur();
+    showChat();
+    if (!history.length && !busy) setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. PREGUNTA ALGO.', false);
+  });
+  keyEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') okEl.click(); });
+
+  // Mantener pulsada la pantalla LCD (0,7 s) abre la configuración.
+  var pressTimer = null;
+  function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
+  screenEl.addEventListener('touchstart', function () {
+    cancelPress();
+    pressTimer = setTimeout(function () { pressTimer = null; if (!busy) showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); }, 700);
+  }, { passive: true });
+  ['touchend', 'touchmove', 'touchcancel'].forEach(function (ev) { screenEl.addEventListener(ev, cancelPress, { passive: true }); });
+
+  // ---------- pantalla LCD ----------
+  var answerText = '';
+  function render(typing) {
+    outEl.textContent = answerText;
+    if (typing) {
+      var c = document.createElement('span');
+      c.className = 'cursor';
+      c.textContent = '█';
+      outEl.appendChild(c);
+    }
+    outEl.scrollTop = outEl.scrollHeight;
+    updateArrows();
+  }
+  function updateArrows() {
+    var scrollable = outEl.scrollHeight > outEl.clientHeight + 1;
+    arrowsEl.textContent = scrollable ? '▲▼' : '';
+  }
+  function setScreen(question, answer, typing) {
+    qEl.textContent = question;
+    answerText = answer;
+    render(typing);
+  }
+  window.addEventListener('resize', updateArrows);
+
+  // Escritura letra por letra: el texto que llega por SSE entra en una cola
+  // y se vuelca a pantalla a ritmo constante (más rápido si la cola crece).
+  var queue = '', ticking = null, streamDone = true, onDrained = null;
+  function enqueue(t) { queue += t; if (!ticking) ticking = setInterval(tick, 16); }
+  function tick() {
+    if (queue.length) {
+      var n = Math.max(1, Math.ceil(queue.length / 20));
+      answerText += queue.slice(0, n);
+      queue = queue.slice(n);
+      render(true);
+    } else if (streamDone) {
+      clearInterval(ticking); ticking = null;
+      render(false);
+      if (onDrained) { var f = onDrained; onDrained = null; f(); }
+    }
+  }
+  function finishTyping(cb) {
+    streamDone = true;
+    if (!ticking) { render(false); if (cb) cb(); } else onDrained = cb || null;
+  }
+  function resetTyping() { queue = ''; answerText = ''; }
+
+  // ---------- fotos ----------
+  camEl.addEventListener('click', function () {
+    if (busy) return;
+    if (photo) { clearPhoto(); return; }   // con foto adjunta, tocar la quita
+    fileEl.value = '';
+    fileEl.click();
+  });
+
+  fileEl.addEventListener('change', function () {
+    var f = fileEl.files && fileEl.files[0];
+    if (!f) return;
+    var url = URL.createObjectURL(f);
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var MAX = 1200;
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var s = Math.min(1, MAX / Math.max(w, h));
+        var cw = Math.round(w * s), ch = Math.round(h * s);
+        var c = document.createElement('canvas');
+        c.width = cw; c.height = ch;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch);
+        ctx.drawImage(img, 0, 0, cw, ch);
+        var dataUrl = c.toDataURL('image/jpeg', 0.85);
+        photo = { media_type: 'image/jpeg', data: dataUrl.slice(dataUrl.indexOf(',') + 1) };
+        drawThumb(img);
+        camEl.classList.add('has-photo');
+        camEl.setAttribute('aria-label', 'Quitar foto (foto lista)');
+        if (!busy) qEl.textContent = '[IMG] FOTO LISTA';
+      } catch (e) {
+        photo = null;
+        setScreen('ERROR', 'NO SE PUDO LEER LA FOTO.', false);
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); setScreen('ERROR', 'NO SE PUDO ABRIR LA FOTO.', false); };
+    img.src = url;
+  });
+
+  // Miniatura pixelada en la paleta verde de la LCD.
+  function drawThumb(img) {
+    var SW = 11, SH = 9;  // resolución "LCD" de la miniatura
+    var small = document.createElement('canvas');
+    small.width = SW; small.height = SH;
+    var sctx = small.getContext('2d');
+    var iw = img.naturalWidth, ih = img.naturalHeight, r = SW / SH;
+    var sw = iw, sh = iw / r;
+    if (sh > ih) { sh = ih; sw = ih * r; }
+    sctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, SW, SH);
+    var d = sctx.getImageData(0, 0, SW, SH);
+    var pal = [[15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]];
+    for (var i = 0; i < d.data.length; i += 4) {
+      var l = (0.299 * d.data[i] + 0.587 * d.data[i + 1] + 0.114 * d.data[i + 2]) / 255;
+      var p = pal[Math.min(3, Math.floor(l * 4))];
+      d.data[i] = p[0]; d.data[i + 1] = p[1]; d.data[i + 2] = p[2]; d.data[i + 3] = 255;
+    }
+    sctx.putImageData(d, 0, 0);
+    var tctx = thumbEl.getContext('2d');
+    tctx.imageSmoothingEnabled = false;
+    tctx.webkitImageSmoothingEnabled = false;
+    tctx.clearRect(0, 0, thumbEl.width, thumbEl.height);
+    tctx.drawImage(small, 0, 0, thumbEl.width, thumbEl.height);
+  }
+
+  function clearPhoto() {
+    photo = null;
+    camEl.classList.remove('has-photo');
+    camEl.setAttribute('aria-label', 'Adjuntar foto');
+    if (qEl.textContent === '[IMG] FOTO LISTA') qEl.textContent = 'FOTO QUITADA';
+  }
+
+  // ---------- envío ----------
+  sendEl.addEventListener('click', send);
+  msgEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); send(); } });
+
+  function send() {
+    if (busy) return;
+    var text = msgEl.value.trim();
+    var cmd = text.toLowerCase();
+    if (cmd === '/config') { msgEl.value = ''; showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); return; }
+    if (cmd === '/nuevo') { msgEl.value = ''; history = []; clearPhoto(); setScreen('CLAUDE·8', 'CONVERSACION NUEVA.', false); return; }
+    if (!text && !photo) { msgEl.focus(); return; }
+    if (!apiKey()) { showConfig('PRIMERO PEGA TU API KEY.'); return; }
+
+    var content = [];
+    if (photo) content.push({ type: 'image', source: { type: 'base64', media_type: photo.media_type, data: photo.data } });
+    content.push({ type: 'text', text: text || '¿Qué ves en esta foto?' });
+    var hadPhoto = !!photo;
+
+    history.push({ role: 'user', content: content });
+    msgEl.value = '';
+    msgEl.blur();
+    clearPhoto();
+
+    busy = true;
+    sendEl.disabled = true; camEl.disabled = true;
+    resetTyping();
+    streamDone = false;
+    setScreen('> ' + (text || '¿QUE ES ESTO?') + (hadPhoto ? ' [IMG]' : ''), '', true);
+
+    streamReply().then(function (res) {
+      finishTyping(function () {
+        if (res.ok) {
+          history.push({ role: 'assistant', content: res.content });
+        } else {
+          history.pop();  // la pregunta sin respuesta no queda en el historial
+          answerText = res.error;
+          render(false);
+          if (res.goConfig) showConfig(res.error);
+        }
+        busy = false;
+        sendEl.disabled = false; camEl.disabled = false;
+      });
+    });
+  }
+
+  // Llama a la API con streaming SSE. Devuelve { ok, content } o { ok:false, error }.
+  function streamReply() {
+    var m = model();
+    var body = {
+      model: m,
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      messages: history,
+      stream: true,
+      output_config: { effort: 'low' }
+    };
+    var headers = {
+      'content-type': 'application/json',
+      'x-api-key': apiKey(),
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    };
+    if (FALLBACK_MODELS[m]) {
+      body.fallbacks = 'default';
+      headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
+    }
+
+    var blocks = [];       // bloques de contenido reconstruidos (se reenvían tal cual en el historial)
+    var stopReason = null;
+    var streamError = null;
+
+    return fetch(API_URL, { method: 'POST', headers: headers, body: JSON.stringify(body) })
+      .then(function (resp) {
+        if (!resp.ok) {
+          return resp.text().then(function (t) {
+            var msg = '';
+            try { msg = JSON.parse(t).error.message; } catch (e) {}
+            if (resp.status === 401) return { ok: false, error: 'API KEY INVALIDA. REVISALA.', goConfig: true };
+            if (resp.status === 404) return { ok: false, error: 'MODELO NO DISPONIBLE. CAMBIALO EN CONFIG.' };
+            if (resp.status === 429) return { ok: false, error: 'DEMASIADAS PETICIONES. ESPERA UN MOMENTO.' };
+            if (resp.status === 529 || resp.status >= 500) return { ok: false, error: 'SERVIDOR SATURADO. INTENTA DE NUEVO.' };
+            return { ok: false, error: 'ERROR ' + resp.status + (msg ? ': ' + msg : '') };
+          });
+        }
+
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var buf = '';
+
+        function handle(ev) {
+          switch (ev.type) {
+            case 'content_block_start':
+              var b = ev.content_block || {};
+              blocks[ev.index] = JSON.parse(JSON.stringify(b));
+              // Tras un fallback a mitad de respuesta, lo ya mostrado era del intento rechazado.
+              if (b.type === 'fallback') { queue = ''; answerText = ''; render(true); }
+              if (b.type === 'text' && b.text) enqueue(b.text);
+              break;
+            case 'content_block_delta':
+              var blk = blocks[ev.index], d = ev.delta || {};
+              if (!blk) break;
+              if (d.type === 'text_delta') { blk.text = (blk.text || '') + d.text; enqueue(d.text); }
+              else if (d.type === 'thinking_delta') blk.thinking = (blk.thinking || '') + d.thinking;
+              else if (d.type === 'signature_delta') blk.signature = (blk.signature || '') + d.signature;
+              break;
+            case 'message_delta':
+              if (ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
+              break;
+            case 'error':
+              streamError = (ev.error && ev.error.type === 'overloaded_error') ? 'SERVIDOR SATURADO. INTENTA DE NUEVO.' :
+                'ERROR: ' + ((ev.error && ev.error.message) || 'DESCONOCIDO');
+              break;
+          }
+        }
+
+        function pump() {
+          return reader.read().then(function (r) {
+            if (r.done) return;
+            buf += decoder.decode(r.value, { stream: true });
+            var parts = buf.split(/\r?\n\r?\n/);
+            buf = parts.pop();
+            for (var i = 0; i < parts.length; i++) {
+              var lines = parts[i].split(/\r?\n/), data = '';
+              for (var j = 0; j < lines.length; j++) {
+                if (lines[j].indexOf('data:') === 0) data += lines[j].slice(5).replace(/^ /, '');
+              }
+              if (!data) continue;
+              try { handle(JSON.parse(data)); } catch (e) {}
+            }
+            return pump();
+          });
+        }
+
+        return pump().then(function () {
+          if (streamError) return { ok: false, error: streamError };
+          if (stopReason === 'refusal') return { ok: false, error: 'NO PUEDO RESPONDER ESO. PRUEBA DE OTRA FORMA.' };
+          var content = cleanBlocks(blocks);
+          var hasText = content.some(function (b) { return b.type === 'text' && b.text; });
+          if (!hasText) return { ok: false, error: 'SIN RESPUESTA. INTENTA DE NUEVO.' };
+          if (stopReason === 'max_tokens') enqueue('…');
+          return { ok: true, content: content };
+        });
+      })
+      .catch(function () {
+        return { ok: false, error: navigator.onLine === false ? 'SIN CONEXION.' : 'ERROR DE RED. INTENTA DE NUEVO.' };
+      });
+  }
+
+  // Prepara los bloques de la respuesta para reenviarlos sin modificar en el historial.
+  // Si hubo fallback a mitad de respuesta, se omiten los bloques de razonamiento previos al marcador.
+  function cleanBlocks(list) {
+    list = list.filter(Boolean);
+    var lastFb = -1;
+    list.forEach(function (b, i) { if (b.type === 'fallback') lastFb = i; });
+    return list.filter(function (b, i) {
+      if (b.type === 'fallback') return false;
+      if (i < lastFb && (b.type === 'thinking' || b.type === 'redacted_thinking' || b.type === 'tool_use')) return false;
+      if (b.type === 'text' && !b.text) return false;
+      return true;
+    });
+  }
+
+  // ---------- inicio ----------
+  if (!apiKey()) {
+    showConfig();
+  } else {
+    showChat();
+    setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. PREGUNTA ALGO. MANTEN PULSADA LA PANTALLA PARA CONFIG.', false);
+  }
+})();
+</script>
+</body>
+</html>
