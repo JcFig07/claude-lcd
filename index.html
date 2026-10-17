@@ -136,7 +136,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   var sendEl = $('send'), camEl = $('cam'), thumbEl = $('thumb'), viewEl = $('view');
   var keyEl = $('key'), modelEl = $('model'), modelNameEl = $('modelName'), cfgMsgEl = $('cfgMsg'), okEl = $('ok');
 
-  // Historial completo en memoria (para la API); en pantalla solo el último intercambio.
+  // Conversación en curso para la API (se reinicia con cada foto); en pantalla solo el último intercambio.
   var history = [];
   var photo = null;      // { data: base64 sin prefijo, media_type }
   var busy = false;
@@ -370,6 +370,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       { type: 'text', text: 'Responde de manera concisa y precisa a lo que ves en la imagen. Si es un ejercicio que involucre un procedimiento matemático, ahí y solo ahí explícalo paso a paso.' }
     ];
 
+    history = [];  // cada foto es una conversación nueva e independiente
     history.push({ role: 'user', content: content });
     var sentPhoto = photo;
     clearPhoto();
