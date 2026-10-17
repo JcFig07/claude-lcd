@@ -178,7 +178,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
   screenEl.addEventListener('touchstart', function () {
     cancelPress();
-    pressTimer = setTimeout(function () { pressTimer = null; if (!busy && !stream) showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); }, 700);
+    pressTimer = setTimeout(function () { pressTimer = null; if (!busy && !camOn) showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); }, 700);
   }, { passive: true });
   ['touchend', 'touchmove', 'touchcancel'].forEach(function (ev) { screenEl.addEventListener(ev, cancelPress, { passive: true }); });
 
@@ -231,36 +231,51 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   // ---------- fotos ----------
   // La cámara se muestra en vivo dentro de la pantalla LCD (getUserMedia),
   // así no se abre la cámara de iOS a pantalla completa.
-  var stream = null;
+  // iOS no recuerda el permiso en apps de pantalla de inicio: cada getUserMedia
+  // vuelve a preguntar. Por eso la cámara se pide una sola vez y al cerrar el
+  // visor solo se pausa (track.enabled = false) en lugar de apagarse.
+  var stream = null;   // flujo de cámara, se conserva mientras siga vivo
+  var camOn = false;   // visor abierto
 
   camEl.addEventListener('click', function () {
     if (busy) return;
-    if (stream) { stopCamera(); return; }  // con el visor abierto, X lo cierra
-    if (photo) { clearPhoto(); return; }   // con foto adjunta, tocar la quita
+    if (camOn) { stopCamera(); return; }  // con el visor abierto, X lo cierra
+    if (photo) { clearPhoto(); return; }  // con foto adjunta, tocar la quita
     startCamera();
   });
 
-  screenEl.addEventListener('click', function () { if (stream) capture(); });
+  screenEl.addEventListener('click', function () { if (camOn) capture(); });
 
   document.addEventListener('visibilitychange', function () { if (document.hidden) stopCamera(); });
 
+  function streamAlive() {
+    return !!stream && stream.getVideoTracks().some(function (t) { return t.readyState === 'live'; });
+  }
+
+  function showViewer() {
+    stream.getVideoTracks().forEach(function (t) { t.enabled = true; });
+    if (viewEl.srcObject !== stream) viewEl.srcObject = stream;
+    var p = viewEl.play();
+    if (p && p.catch) p.catch(function () {});
+    camOn = true;
+    chatEl.classList.add('camera-on');
+    camEl.setAttribute('aria-label', 'Cerrar camara');
+    sendEl.textContent = 'FOTO';
+  }
+
   function startCamera() {
+    msgEl.blur();
+    if (streamAlive()) { showViewer(); return; }  // sin volver a pedir permiso
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setScreen('CAMARA', 'ESTE NAVEGADOR NO PERMITE USAR LA CAMARA AQUI.', false);
       return;
     }
-    msgEl.blur();
     navigator.mediaDevices.getUserMedia({
       audio: false,
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
     }).then(function (s) {
       stream = s;
-      viewEl.srcObject = s;
-      var p = viewEl.play();
-      if (p && p.catch) p.catch(function () {});
-      chatEl.classList.add('camera-on');
-      camEl.setAttribute('aria-label', 'Cerrar camara');
-      sendEl.textContent = 'FOTO';
+      showViewer();
     }).catch(function (err) {
       setScreen('CAMARA', err && err.name === 'NotAllowedError'
         ? 'SIN PERMISO DE CAMARA. ACTIVALO EN AJUSTES > SAFARI > CAMARA.'
@@ -269,8 +284,9 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   }
 
   function stopCamera() {
-    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-    viewEl.srcObject = null;
+    if (stream) stream.getVideoTracks().forEach(function (t) { t.enabled = false; });
+    viewEl.pause();
+    camOn = false;
     chatEl.classList.remove('camera-on');
     camEl.setAttribute('aria-label', photo ? 'Quitar foto (foto lista)' : 'Adjuntar foto');
     sendEl.textContent = 'ENVIAR';
@@ -344,7 +360,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
   function send() {
     if (busy) return;
-    if (stream) { capture(); return; }  // con el visor abierto, la tecla es FOTO
+    if (camOn) { capture(); return; }  // con el visor abierto, la tecla es FOTO
     var text = msgEl.value.trim();
     var cmd = text.toLowerCase();
     if (cmd === '/config') { msgEl.value = ''; showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); return; }
