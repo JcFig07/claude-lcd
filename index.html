@@ -46,7 +46,12 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
 /* Botón de cámara */
-#cam{padding:0;width:44px;display:flex;align-items:center;justify-content:center;position:relative}
+/* Chat: pantalla a la izquierda, cámara sobre ENVIAR a la derecha */
+#chat{flex-direction:row}
+#chat .screen{min-width:0}
+.side{display:flex;flex-direction:column;gap:6px;width:76px;flex-shrink:0}
+.side .key{flex:1 1 0;width:100%;padding:0}
+#cam{display:flex;align-items:center;justify-content:center;position:relative}
 #cam svg{width:22px;height:17px;display:block}
 #thumb{width:22px;height:17px;display:none;border:1px solid #86a614;image-rendering:pixelated;image-rendering:crisp-edges}
 #cam.has-photo svg{display:none}
@@ -79,13 +84,11 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       <video id="view" playsinline muted autoplay></video>
       <div id="viewHint" class="ink">TOCA AQUI O FOTO</div>
     </div>
-    <div class="row">
+    <div class="side">
       <button class="key" id="cam" aria-label="Adjuntar foto">
         <svg viewBox="0 0 11 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#306230" d="M3 0h4v1h3v1h1v5h-1v1H1V7H0V2h1V1h2zM1 2v5h9V2zm3 1h3v1h1v2H7v1H4V6H3V4h1zm0 1v2h3V4z"/></svg>
         <canvas id="thumb" width="44" height="34" aria-hidden="true"></canvas>
       </button>
-      <label for="msg" class="sr">Mensaje</label>
-      <input id="msg" class="lcd ink field" placeholder="ESCRIBE_" autocomplete="off" autocorrect="on" enterkeyhint="send">
       <button class="key key-accent" id="send">ENVIAR</button>
     </div>
   </div>
@@ -130,7 +133,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   var $ = function (id) { return document.getElementById(id); };
   var chatEl = $('chat'), configEl = $('config');
   var screenEl = $('screen'), outEl = $('out'), qEl = $('q'), arrowsEl = $('arrows');
-  var msgEl = $('msg'), sendEl = $('send'), camEl = $('cam'), thumbEl = $('thumb'), viewEl = $('view');
+  var sendEl = $('send'), camEl = $('cam'), thumbEl = $('thumb'), viewEl = $('view');
   var keyEl = $('key'), modelEl = $('model'), modelNameEl = $('modelName'), cfgMsgEl = $('cfgMsg'), okEl = $('ok');
 
   // Historial completo en memoria (para la API); en pantalla solo el último intercambio.
@@ -169,7 +172,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     store('lcd_model', modelEl.value);
     keyEl.blur();
     showChat();
-    if (!history.length && !busy) setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. PREGUNTA ALGO.', false);
+    if (!history.length && !busy) setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. TOCA LA CAMARA.', false);
   });
   keyEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') okEl.click(); });
 
@@ -264,7 +267,6 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   }
 
   function startCamera() {
-    msgEl.blur();
     if (streamAlive()) { showViewer(); return; }  // sin volver a pedir permiso
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setScreen('CAMARA', 'ESTE NAVEGADOR NO PERMITE USAR LA CAMARA AQUI.', false);
@@ -356,33 +358,27 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
   // ---------- envío ----------
   sendEl.addEventListener('click', send);
-  msgEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); send(); } });
 
   function send() {
     if (busy) return;
-    if (camOn) { capture(); return; }  // con el visor abierto, la tecla es FOTO
-    var text = msgEl.value.trim();
-    var cmd = text.toLowerCase();
-    if (cmd === '/config') { msgEl.value = ''; showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); return; }
-    if (cmd === '/nuevo') { msgEl.value = ''; history = []; clearPhoto(); setScreen('CLAUDE·8', 'CONVERSACION NUEVA.', false); return; }
-    if (!text && !photo) { msgEl.focus(); return; }
+    if (camOn) { capture(); return; }       // con el visor abierto, la tecla es FOTO
+    if (!photo) { startCamera(); return; }  // sin foto, ENVIAR abre la cámara
     if (!apiKey()) { showConfig('PRIMERO PEGA TU API KEY.'); return; }
 
-    var content = [];
-    if (photo) content.push({ type: 'image', source: { type: 'base64', media_type: photo.media_type, data: photo.data } });
-    content.push({ type: 'text', text: text || 'Responde de manera concisa y precisa a lo que ves en la imagen. Si es un ejercicio que involucre un procedimiento matemático, ahí y solo ahí explícalo paso a paso.' });
-    var hadPhoto = !!photo;
+    var content = [
+      { type: 'image', source: { type: 'base64', media_type: photo.media_type, data: photo.data } },
+      { type: 'text', text: 'Responde de manera concisa y precisa a lo que ves en la imagen. Si es un ejercicio que involucre un procedimiento matemático, ahí y solo ahí explícalo paso a paso.' }
+    ];
 
     history.push({ role: 'user', content: content });
-    msgEl.value = '';
-    msgEl.blur();
+    var sentPhoto = photo;
     clearPhoto();
 
     busy = true;
     sendEl.disabled = true; camEl.disabled = true;
     resetTyping();
     streamDone = false;
-    setScreen('> ' + (text || 'ANALIZA LA FOTO') + (hadPhoto ? ' [IMG]' : ''), '', true);
+    setScreen('> ANALIZA LA FOTO [IMG]', '', true);
 
     streamReply().then(function (res) {
       finishTyping(function () {
@@ -390,6 +386,9 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
           history.push({ role: 'assistant', content: res.content });
         } else {
           history.pop();  // la pregunta sin respuesta no queda en el historial
+          photo = sentPhoto;  // la foto sigue adjunta para reintentar con ENVIAR
+          camEl.classList.add('has-photo');
+          camEl.setAttribute('aria-label', 'Quitar foto (foto lista)');
           answerText = res.error;
           render(false);
           if (res.goConfig) showConfig(res.error);
@@ -522,7 +521,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     showConfig();
   } else {
     showChat();
-    setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. PREGUNTA ALGO. MANTEN PULSADA LA PANTALLA PARA CONFIG.', false);
+    setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. TOCA LA CAMARA. MANTEN PULSADA LA PANTALLA PARA CONFIG.', false);
   }
 })();
 </script>
