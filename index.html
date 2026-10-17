@@ -54,7 +54,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
 /* Visor de cámara dentro de la pantalla LCD */
 .screen{position:relative}
-#view{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:none;filter:grayscale(1) contrast(1.3) brightness(1.1);mix-blend-mode:multiply;pointer-events:none}
+#view{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:none;filter:grayscale(1) contrast(1.3) brightness(1.1);mix-blend-mode:multiply;pointer-events:none}
 #viewHint{position:absolute;left:4px;bottom:3px;font-size:14px;line-height:1;padding:1px 4px;background:#9bbc0f;border-radius:2px;display:none;pointer-events:none}
 .camera-on #view,.camera-on #viewHint{display:block}
 .camera-on .head,.camera-on .out{visibility:hidden}
