@@ -51,7 +51,15 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 #thumb{width:22px;height:17px;display:none;border:1px solid #86a614;image-rendering:pixelated;image-rendering:crisp-edges}
 #cam.has-photo svg{display:none}
 #cam.has-photo #thumb{display:block}
-#file{display:none}
+
+/* Visor de cámara dentro de la pantalla LCD */
+.screen{position:relative}
+#view{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:none;filter:grayscale(1) contrast(1.3) brightness(1.1);mix-blend-mode:multiply;pointer-events:none}
+#viewHint{position:absolute;left:4px;bottom:3px;font-size:14px;line-height:1;padding:1px 4px;background:#9bbc0f;border-radius:2px;display:none;pointer-events:none}
+.camera-on #view,.camera-on #viewHint{display:block}
+.camera-on .head,.camera-on .out{visibility:hidden}
+.camera-on #cam svg,.camera-on #cam #thumb{display:none}
+.camera-on #cam::after{content:'X';font-size:14px}
 
 /* Selector de modelo: select invisible sobre la tecla MODELO */
 .pick{position:relative;flex-shrink:0;display:flex}
@@ -68,13 +76,14 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     <div class="lcd ink screen" id="screen">
       <div class="head"><span id="q">CLAUDE·8</span><span id="arrows"></span></div>
       <div class="out" id="out"></div>
+      <video id="view" playsinline muted autoplay></video>
+      <div id="viewHint" class="ink">TOCA AQUI O FOTO</div>
     </div>
     <div class="row">
       <button class="key" id="cam" aria-label="Adjuntar foto">
         <svg viewBox="0 0 11 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="#306230" d="M3 0h4v1h3v1h1v5h-1v1H1V7H0V2h1V1h2zM1 2v5h9V2zm3 1h3v1h1v2H7v1H4V6H3V4h1zm0 1v2h3V4z"/></svg>
         <canvas id="thumb" width="44" height="34" aria-hidden="true"></canvas>
       </button>
-      <input type="file" id="file" accept="image/*" capture="environment">
       <label for="msg" class="sr">Mensaje</label>
       <input id="msg" class="lcd ink field" placeholder="ESCRIBE_" autocomplete="off" autocorrect="on" enterkeyhint="send">
       <button class="key key-accent" id="send">ENVIAR</button>
@@ -121,7 +130,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   var $ = function (id) { return document.getElementById(id); };
   var chatEl = $('chat'), configEl = $('config');
   var screenEl = $('screen'), outEl = $('out'), qEl = $('q'), arrowsEl = $('arrows');
-  var msgEl = $('msg'), sendEl = $('send'), camEl = $('cam'), fileEl = $('file'), thumbEl = $('thumb');
+  var msgEl = $('msg'), sendEl = $('send'), camEl = $('cam'), thumbEl = $('thumb'), viewEl = $('view');
   var keyEl = $('key'), modelEl = $('model'), modelNameEl = $('modelName'), cfgMsgEl = $('cfgMsg'), okEl = $('ok');
 
   // Historial completo en memoria (para la API); en pantalla solo el último intercambio.
@@ -169,7 +178,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
   screenEl.addEventListener('touchstart', function () {
     cancelPress();
-    pressTimer = setTimeout(function () { pressTimer = null; if (!busy) showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); }, 700);
+    pressTimer = setTimeout(function () { pressTimer = null; if (!busy && !stream) showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); }, 700);
   }, { passive: true });
   ['touchend', 'touchmove', 'touchcancel'].forEach(function (ev) { screenEl.addEventListener(ev, cancelPress, { passive: true }); });
 
@@ -220,52 +229,90 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   function resetTyping() { queue = ''; answerText = ''; }
 
   // ---------- fotos ----------
+  // La cámara se muestra en vivo dentro de la pantalla LCD (getUserMedia),
+  // así no se abre la cámara de iOS a pantalla completa.
+  var stream = null;
+
   camEl.addEventListener('click', function () {
     if (busy) return;
+    if (stream) { stopCamera(); return; }  // con el visor abierto, X lo cierra
     if (photo) { clearPhoto(); return; }   // con foto adjunta, tocar la quita
-    fileEl.value = '';
-    fileEl.click();
+    startCamera();
   });
 
-  fileEl.addEventListener('change', function () {
-    var f = fileEl.files && fileEl.files[0];
-    if (!f) return;
-    var url = URL.createObjectURL(f);
-    var img = new Image();
-    img.onload = function () {
-      try {
-        var MAX = 1200;
-        var w = img.naturalWidth, h = img.naturalHeight;
-        var s = Math.min(1, MAX / Math.max(w, h));
-        var cw = Math.round(w * s), ch = Math.round(h * s);
-        var c = document.createElement('canvas');
-        c.width = cw; c.height = ch;
-        var ctx = c.getContext('2d');
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch);
-        ctx.drawImage(img, 0, 0, cw, ch);
-        var dataUrl = c.toDataURL('image/jpeg', 0.85);
-        photo = { media_type: 'image/jpeg', data: dataUrl.slice(dataUrl.indexOf(',') + 1) };
-        drawThumb(img);
-        camEl.classList.add('has-photo');
-        camEl.setAttribute('aria-label', 'Quitar foto (foto lista)');
-        if (!busy) qEl.textContent = '[IMG] FOTO LISTA';
-      } catch (e) {
-        photo = null;
-        setScreen('ERROR', 'NO SE PUDO LEER LA FOTO.', false);
-      }
-      URL.revokeObjectURL(url);
-    };
-    img.onerror = function () { URL.revokeObjectURL(url); setScreen('ERROR', 'NO SE PUDO ABRIR LA FOTO.', false); };
-    img.src = url;
-  });
+  screenEl.addEventListener('click', function () { if (stream) capture(); });
+
+  document.addEventListener('visibilitychange', function () { if (document.hidden) stopCamera(); });
+
+  function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setScreen('CAMARA', 'ESTE NAVEGADOR NO PERMITE USAR LA CAMARA AQUI.', false);
+      return;
+    }
+    msgEl.blur();
+    navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+    }).then(function (s) {
+      stream = s;
+      viewEl.srcObject = s;
+      var p = viewEl.play();
+      if (p && p.catch) p.catch(function () {});
+      chatEl.classList.add('camera-on');
+      camEl.setAttribute('aria-label', 'Cerrar camara');
+      sendEl.textContent = 'FOTO';
+    }).catch(function (err) {
+      setScreen('CAMARA', err && err.name === 'NotAllowedError'
+        ? 'SIN PERMISO DE CAMARA. ACTIVALO EN AJUSTES > SAFARI > CAMARA.'
+        : 'NO SE PUDO ABRIR LA CAMARA.', false);
+    });
+  }
+
+  function stopCamera() {
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    viewEl.srcObject = null;
+    chatEl.classList.remove('camera-on');
+    camEl.setAttribute('aria-label', photo ? 'Quitar foto (foto lista)' : 'Adjuntar foto');
+    sendEl.textContent = 'ENVIAR';
+  }
+
+  function capture() {
+    var w = viewEl.videoWidth, h = viewEl.videoHeight;
+    if (!w || !h) return;  // el visor aún no tiene imagen
+    setPhotoFrom(viewEl, w, h);
+    stopCamera();
+  }
+
+  // Redimensiona a máx. 1200 px de lado, convierte a JPEG y deja la foto adjunta.
+  function setPhotoFrom(src, w, h) {
+    try {
+      var MAX = 1200;
+      var s = Math.min(1, MAX / Math.max(w, h));
+      var cw = Math.round(w * s), ch = Math.round(h * s);
+      var c = document.createElement('canvas');
+      c.width = cw; c.height = ch;
+      var ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(src, 0, 0, cw, ch);
+      var dataUrl = c.toDataURL('image/jpeg', 0.85);
+      photo = { media_type: 'image/jpeg', data: dataUrl.slice(dataUrl.indexOf(',') + 1) };
+      drawThumb(src, w, h);
+      camEl.classList.add('has-photo');
+      camEl.setAttribute('aria-label', 'Quitar foto (foto lista)');
+      if (!busy) qEl.textContent = '[IMG] FOTO LISTA';
+    } catch (e) {
+      photo = null;
+      setScreen('ERROR', 'NO SE PUDO LEER LA FOTO.', false);
+    }
+  }
 
   // Miniatura pixelada en la paleta verde de la LCD.
-  function drawThumb(img) {
+  function drawThumb(img, iw, ih) {
     var SW = 11, SH = 9;  // resolución "LCD" de la miniatura
     var small = document.createElement('canvas');
     small.width = SW; small.height = SH;
     var sctx = small.getContext('2d');
-    var iw = img.naturalWidth, ih = img.naturalHeight, r = SW / SH;
+    var r = SW / SH;
     var sw = iw, sh = iw / r;
     if (sh > ih) { sh = ih; sw = ih * r; }
     sctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, SW, SH);
@@ -297,6 +344,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
   function send() {
     if (busy) return;
+    if (stream) { capture(); return; }  // con el visor abierto, la tecla es FOTO
     var text = msgEl.value.trim();
     var cmd = text.toLowerCase();
     if (cmd === '/config') { msgEl.value = ''; showConfig('CONFIGURACION. CAMBIA LA KEY O EL MODELO.'); return; }
