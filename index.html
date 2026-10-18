@@ -41,6 +41,10 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 #arrUp{top:4px}
 #arrDown{bottom:4px}
 .arrow.show{display:block}
+.arrow.off{opacity:.25}
+#track{position:absolute;right:6px;top:18px;bottom:18px;width:6px;box-sizing:border-box;border:1px solid rgba(48,98,48,.45);border-radius:1px;display:none;pointer-events:none}
+#track.show{display:block}
+#thumb2{position:absolute;left:1px;right:1px;top:1px;min-height:4px;background:#306230}
 .out::-webkit-scrollbar{display:none}
 .cursor{background:#306230;color:#9bbc0f;text-shadow:none;animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -67,7 +71,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 #view{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:none;filter:grayscale(1) contrast(1.3) brightness(1.1);mix-blend-mode:multiply;pointer-events:none}
 #viewHint{position:absolute;left:4px;bottom:3px;font-size:14px;line-height:1;padding:1px 4px;background:#9bbc0f;border-radius:2px;display:none;pointer-events:none}
 .camera-on #view,.camera-on #viewHint{display:block}
-.camera-on .head,.camera-on .out,.camera-on .arrow{visibility:hidden}
+.camera-on .head,.camera-on .out,.camera-on .arrow,.camera-on #track{visibility:hidden}
 .camera-on #cam svg,.camera-on #cam #thumb{display:none}
 .camera-on #cam::after{content:'X';font-size:14px}
 
@@ -87,6 +91,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       <div class="out" id="out"></div>
       <span class="arrow" id="arrUp" aria-hidden="true">▲</span>
       <span class="arrow" id="arrDown" aria-hidden="true">▼</span>
+      <div id="track" aria-hidden="true"><div id="thumb2"></div></div>
       <video id="view" playsinline muted autoplay></video>
       <div id="viewHint" class="ink">TOCA AQUI O FOTO</div>
     </div>
@@ -138,7 +143,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
   var $ = function (id) { return document.getElementById(id); };
   var chatEl = $('chat'), configEl = $('config');
-  var screenEl = $('screen'), outEl = $('out'), arrUpEl = $('arrUp'), arrDownEl = $('arrDown');
+  var screenEl = $('screen'), outEl = $('out'), arrUpEl = $('arrUp'), arrDownEl = $('arrDown'), trackEl = $('track'), barEl = $('thumb2');
   var sendEl = $('send'), camEl = $('cam'), thumbEl = $('thumb'), viewEl = $('view');
   var keyEl = $('key'), modelEl = $('model'), modelNameEl = $('modelName'), cfgMsgEl = $('cfgMsg'), okEl = $('ok');
 
@@ -207,8 +212,20 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   function updateArrows() {
     var up = outEl.scrollTop > 1;
     var down = outEl.scrollTop + outEl.clientHeight < outEl.scrollHeight - 1;
-    arrUpEl.classList.toggle('show', up);
-    arrDownEl.classList.toggle('show', down);
+    var scrollable = up || down;
+    // Con texto desplazable se ven las dos flechas; la que no tiene recorrido queda tenue.
+    arrUpEl.classList.toggle('show', scrollable);
+    arrDownEl.classList.toggle('show', scrollable);
+    arrUpEl.classList.toggle('off', !up);
+    arrDownEl.classList.toggle('off', !down);
+    trackEl.classList.toggle('show', scrollable);
+    if (!scrollable) return;
+    // Barra de posición entre las flechas: el tamaño indica cuánto se ve y la posición dónde estás.
+    var inner = trackEl.clientHeight - 2;
+    var h = Math.max(4, Math.round(inner * outEl.clientHeight / outEl.scrollHeight));
+    var max = outEl.scrollHeight - outEl.clientHeight;
+    barEl.style.height = h + 'px';
+    barEl.style.top = (1 + Math.round((inner - h) * Math.min(1, outEl.scrollTop / max))) + 'px';
   }
   outEl.addEventListener('scroll', updateArrows, { passive: true });
 
