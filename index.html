@@ -73,9 +73,9 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 .camera-on #view,.camera-on #viewHint{display:block}
 /* Pantalla de error tipo calculadora Casio (3 toques seguidos en ENVIAR) */
 #chat{position:relative}
-#syntax{position:absolute;top:6px;left:8px;right:8px;bottom:8px;z-index:5;box-sizing:border-box;border:2px solid #8eae12;border-radius:4px;display:none;align-items:center;justify-content:flex-start;padding:10px 0 0 10px;text-transform:none}
-#syntax .txt{position:relative;font-size:26px;line-height:1;white-space:pre}
-#syntax .ind{position:absolute;top:-11px;right:0;font-size:12px;line-height:1;white-space:pre}
+#syntax{position:absolute;top:6px;left:8px;right:8px;bottom:8px;z-index:5;box-sizing:border-box;border:2px solid #8eae12;border-radius:4px;display:none;align-items:flex-start;justify-content:flex-start;padding:14px 0 0 10px}
+/* Cursor de entrada intermitente, como una calculadora esperando que escribas */
+#syntax .caret{width:2px;height:24px;background:#306230;animation:blink 1s steps(1) infinite}
 .syntax-on #syntax{display:flex}
 .syntax-on .screen,.syntax-on .side{visibility:hidden}
 .camera-on .head,.camera-on .out,.camera-on .arrow,.camera-on #track{visibility:hidden}
@@ -109,9 +109,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       </button>
       <button class="key key-accent" id="send">ENVIAR</button>
     </div>
-    <div id="syntax" class="lcd ink" aria-live="assertive"><div class="txt"><span class="ind">S  Math</span>  Syntax ERROR
-[AC]  :Cancel
-[◄][►]:Goto</div></div>
+    <div id="syntax" class="lcd ink" aria-hidden="true"><span class="caret"></span></div>
   </div>
 
   <!-- CONFIG -->
@@ -410,7 +408,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   }
 
   // ---------- envío ----------
-  // ENVIAR: un toque (o dos) actúa normal; tres toques seguidos muestran "Syntax ERROR".
+  // ENVIAR: un toque (o dos) actúa normal; tres toques seguidos dejan la franja vacía con un cursor intermitente.
   var taps = 0, tapTimer = null;
   sendEl.addEventListener('click', function () {
     if (hideSyntax()) return;
