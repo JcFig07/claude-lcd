@@ -36,6 +36,11 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 .head span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .head span:last-child{flex-shrink:0}
 .out{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;word-wrap:break-word;overflow-wrap:break-word;white-space:pre-wrap;scrollbar-width:none}
+#chat .out{padding-right:12px}
+.arrow{position:absolute;right:5px;font-size:12px;line-height:1;opacity:.7;display:none;pointer-events:none}
+#arrUp{top:4px}
+#arrDown{bottom:4px}
+.arrow.show{display:block}
 .out::-webkit-scrollbar{display:none}
 .cursor{background:#306230;color:#9bbc0f;text-shadow:none;animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -62,7 +67,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 #view{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:none;filter:grayscale(1) contrast(1.3) brightness(1.1);mix-blend-mode:multiply;pointer-events:none}
 #viewHint{position:absolute;left:4px;bottom:3px;font-size:14px;line-height:1;padding:1px 4px;background:#9bbc0f;border-radius:2px;display:none;pointer-events:none}
 .camera-on #view,.camera-on #viewHint{display:block}
-.camera-on .head,.camera-on .out{visibility:hidden}
+.camera-on .head,.camera-on .out,.camera-on .arrow{visibility:hidden}
 .camera-on #cam svg,.camera-on #cam #thumb{display:none}
 .camera-on #cam::after{content:'X';font-size:14px}
 
@@ -79,8 +84,9 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   <!-- CHAT -->
   <div class="strip" id="chat" hidden>
     <div class="lcd ink screen" id="screen">
-      <div class="head"><span id="q">CLAUDE·8</span><span id="arrows"></span></div>
       <div class="out" id="out"></div>
+      <span class="arrow" id="arrUp" aria-hidden="true">▲</span>
+      <span class="arrow" id="arrDown" aria-hidden="true">▼</span>
       <video id="view" playsinline muted autoplay></video>
       <div id="viewHint" class="ink">TOCA AQUI O FOTO</div>
     </div>
@@ -132,7 +138,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
   var $ = function (id) { return document.getElementById(id); };
   var chatEl = $('chat'), configEl = $('config');
-  var screenEl = $('screen'), outEl = $('out'), qEl = $('q'), arrowsEl = $('arrows');
+  var screenEl = $('screen'), outEl = $('out'), arrUpEl = $('arrUp'), arrDownEl = $('arrDown');
   var sendEl = $('send'), camEl = $('cam'), thumbEl = $('thumb'), viewEl = $('view');
   var keyEl = $('key'), modelEl = $('model'), modelNameEl = $('modelName'), cfgMsgEl = $('cfgMsg'), okEl = $('ok');
 
@@ -172,7 +178,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     store('lcd_model', modelEl.value);
     keyEl.blur();
     showChat();
-    if (!history.length && !busy) setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. TOCA LA CAMARA.', false);
+    if (!history.length && !busy) setScreen('LISTO. TOCA LA CAMARA.', false);
   });
   keyEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') okEl.click(); });
 
@@ -201,7 +207,8 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   function updateArrows() {
     var up = outEl.scrollTop > 1;
     var down = outEl.scrollTop + outEl.clientHeight < outEl.scrollHeight - 1;
-    arrowsEl.textContent = (up ? '▲' : '') + (down ? '▼' : '');
+    arrUpEl.classList.toggle('show', up);
+    arrDownEl.classList.toggle('show', down);
   }
   outEl.addEventListener('scroll', updateArrows, { passive: true });
 
@@ -216,8 +223,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     outEl.scrollBy({ top: dir * step, behavior: 'smooth' });
     setTimeout(updateArrows, 450);
   });
-  function setScreen(question, answer, typing) {
-    qEl.textContent = question;
+  function setScreen(answer, typing) {
     answerText = answer;
     render(typing);
   }
@@ -283,7 +289,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   function startCamera() {
     if (streamAlive()) { showViewer(); return; }  // sin volver a pedir permiso
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setScreen('CAMARA', 'ESTE NAVEGADOR NO PERMITE USAR LA CAMARA AQUI.', false);
+      setScreen('ESTE NAVEGADOR NO PERMITE USAR LA CAMARA AQUI.', false);
       return;
     }
     navigator.mediaDevices.getUserMedia({
@@ -293,7 +299,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       stream = s;
       showViewer();
     }).catch(function (err) {
-      setScreen('CAMARA', err && err.name === 'NotAllowedError'
+      setScreen(err && err.name === 'NotAllowedError'
         ? 'SIN PERMISO DE CAMARA. ACTIVALO EN AJUSTES > SAFARI > CAMARA.'
         : 'NO SE PUDO ABRIR LA CAMARA.', false);
     });
@@ -331,10 +337,9 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       drawThumb(src, w, h);
       camEl.classList.add('has-photo');
       camEl.setAttribute('aria-label', 'Quitar foto (foto lista)');
-      if (!busy) qEl.textContent = '[IMG] FOTO LISTA';
     } catch (e) {
       photo = null;
-      setScreen('ERROR', 'NO SE PUDO LEER LA FOTO.', false);
+      setScreen('NO SE PUDO LEER LA FOTO.', false);
     }
   }
 
@@ -367,7 +372,6 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     photo = null;
     camEl.classList.remove('has-photo');
     camEl.setAttribute('aria-label', 'Adjuntar foto');
-    if (qEl.textContent === '[IMG] FOTO LISTA') qEl.textContent = 'FOTO QUITADA';
   }
 
   // ---------- envío ----------
@@ -393,7 +397,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     sendEl.disabled = true; camEl.disabled = true;
     resetTyping();
     streamDone = false;
-    setScreen('> ANALIZA LA FOTO [IMG]', '', true);
+    setScreen('', true);
 
     streamReply().then(function (res) {
       finishTyping(function () {
@@ -536,7 +540,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     showConfig();
   } else {
     showChat();
-    setScreen('CLAUDE·8 · ' + shortName(model()), 'LISTO. TOCA LA CAMARA. MANTEN PULSADA LA PANTALLA PARA CONFIG.', false);
+    setScreen('LISTO. TOCA LA CAMARA. MANTEN PULSADA LA PANTALLA PARA CONFIG.', false);
   }
 })();
 </script>
