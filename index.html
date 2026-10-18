@@ -17,7 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=VT323&amp;family=Silkscreen&amp;display=swap" rel="stylesheet">
 <style>
 html,body{margin:0;height:100%;background:#000000}
-body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overflow:hidden}
+body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;overflow:hidden;touch-action:manipulation}
 #app{height:100%;display:flex;flex-direction:column;background:#000000}
 
 /* Estilos de las maquetas (diseno/) */
@@ -35,7 +35,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 .head{display:flex;justify-content:space-between;gap:8px;font-size:14px;opacity:.7;flex-shrink:0}
 .head span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .head span:last-child{flex-shrink:0}
-.out{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;word-wrap:break-word;overflow-wrap:break-word;white-space:pre-wrap;-webkit-user-select:text;user-select:text;scrollbar-width:none}
+.out{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;word-wrap:break-word;overflow-wrap:break-word;white-space:pre-wrap;scrollbar-width:none}
 .out::-webkit-scrollbar{display:none}
 .cursor{background:#306230;color:#9bbc0f;text-shadow:none;animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -199,9 +199,23 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     updateArrows();
   }
   function updateArrows() {
-    var scrollable = outEl.scrollHeight > outEl.clientHeight + 1;
-    arrowsEl.textContent = scrollable ? '▲▼' : '';
+    var up = outEl.scrollTop > 1;
+    var down = outEl.scrollTop + outEl.clientHeight < outEl.scrollHeight - 1;
+    arrowsEl.textContent = (up ? '▲' : '') + (down ? '▼' : '');
   }
+  outEl.addEventListener('scroll', updateArrows, { passive: true });
+
+  // Tocar la mitad izquierda del texto baja; la mitad derecha sube.
+  // Cada toque avanza casi una pantalla, repitiendo una línea como referencia.
+  outEl.addEventListener('click', function (e) {
+    if (camOn) return;
+    var r = outEl.getBoundingClientRect();
+    var dir = (e.clientX - r.left) < r.width / 2 ? 1 : -1;
+    var line = parseFloat(getComputedStyle(outEl).lineHeight) || 19;
+    var step = Math.max(line, outEl.clientHeight - line);
+    outEl.scrollBy({ top: dir * step, behavior: 'smooth' });
+    setTimeout(updateArrows, 450);
+  });
   function setScreen(question, answer, typing) {
     qEl.textContent = question;
     answerText = answer;
