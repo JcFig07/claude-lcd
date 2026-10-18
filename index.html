@@ -135,9 +135,16 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 
   var API_URL = 'https://api.anthropic.com/v1/messages';
   var DEFAULT_MODEL = 'claude-sonnet-5-5';
-  var SYSTEM_PROMPT = 'Responde siempre en español. Sé breve y directo: la respuesta se muestra en una pantalla diminuta de unas pocas líneas. ' +
-    'Ve al grano, sin introducciones, sin despedidas, sin listas largas y sin formato Markdown (nada de asteriscos, almohadillas ni tablas). ' +
-    'Si te envían una foto, céntrate en lo que se pregunta sobre ella.';
+  var SYSTEM_PROMPT =
+    'Cada mensaje que recibes es una sola foto tomada con la cámara del teléfono, sin texto. ' +
+    'Responde de manera concisa y precisa a lo que ves en la imagen. ' +
+    'Si es un ejercicio que involucre un procedimiento matemático, ahí y solo ahí explícalo paso a paso; en cualquier otro caso responde directamente. ' +
+    'Si en la foto hay una serie de preguntas o ejercicios, responde todos, en orden e identificando cada uno por su número o letra. ' +
+    'Esta conversación es de un solo turno: el usuario no puede contestarte ni pedirte aclaraciones. ' +
+    'Da una respuesta completa y final; no hagas preguntas, no ofrezcas ampliar ni continuar, y no termines con sugerencias de seguimiento. ' +
+    'Si algo de la imagen no se lee bien, indica brevemente qué supusiste y responde igualmente. ' +
+    'Responde siempre en español. La respuesta se muestra en una pantalla diminuta de pocas líneas: ve al grano, sin introducciones ni despedidas, ' +
+    'y sin formato Markdown (nada de asteriscos, almohadillas ni tablas); para separar pasos o respuestas usa saltos de línea.';
   // Modelos con fallback del lado del servidor cuando un clasificador rechaza la petición.
   var FALLBACK_MODELS = { 'claude-sonnet-5-5': 1, 'claude-opus-5-5': 1 };
 
@@ -400,9 +407,9 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     if (!photo) { startCamera(); return; }  // sin foto, ENVIAR abre la cámara
     if (!apiKey()) { showConfig('PRIMERO PEGA TU API KEY.'); return; }
 
+    // Solo la foto: todas las instrucciones van en el system prompt.
     var content = [
-      { type: 'image', source: { type: 'base64', media_type: photo.media_type, data: photo.data } },
-      { type: 'text', text: 'Responde de manera concisa y precisa a lo que ves en la imagen. Si es un ejercicio que involucre un procedimiento matemático, ahí y solo ahí explícalo paso a paso.' }
+      { type: 'image', source: { type: 'base64', media_type: photo.media_type, data: photo.data } }
     ];
 
     history = [];  // cada foto es una conversación nueva e independiente
