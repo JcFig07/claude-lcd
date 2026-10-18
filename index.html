@@ -408,15 +408,27 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   }
 
   // ---------- envío ----------
-  // ENVIAR: un toque (o dos) actúa normal; tres toques seguidos dejan la franja vacía con un cursor intermitente.
-  var taps = 0, tapTimer = null;
-  sendEl.addEventListener('click', function () {
-    if (hideSyntax()) return;
-    if (busy) return;
-    taps++;
-    clearTimeout(tapTimer);
-    if (taps >= 3) { taps = 0; showSyntax(); return; }
-    tapTimer = setTimeout(function () { taps = 0; send(); }, 500);
+  sendEl.addEventListener('click', function () { if (!hideSyntax()) send(); });
+
+  // Tres toques rápidos en cualquier parte de la franja (menos de 0,5 s entre cada uno)
+  // la dejan vacía con un cursor intermitente. Los deslizamientos no cuentan.
+  var taps = 0, lastTap = 0, tapX = 0, tapY = 0;
+  chatEl.addEventListener('touchstart', function (e) {
+    var t = e.touches[0];
+    tapX = t.clientX; tapY = t.clientY;
+  }, { passive: true });
+  chatEl.addEventListener('touchend', function (e) {
+    if (chatEl.classList.contains('syntax-on')) { taps = 0; return; }  // ese toque lo cierra
+    var t = e.changedTouches[0];
+    if (Math.abs(t.clientX - tapX) > 10 || Math.abs(t.clientY - tapY) > 10) { taps = 0; return; }
+    var now = Date.now();
+    taps = (now - lastTap < 500) ? taps + 1 : 1;
+    lastTap = now;
+    if (taps >= 3) {
+      taps = 0;
+      e.preventDefault();  // el tercer toque no llega a pulsar nada
+      showSyntax();
+    }
   });
 
   function showSyntax() {
