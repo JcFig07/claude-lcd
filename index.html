@@ -410,7 +410,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
   // ---------- envío ----------
   sendEl.addEventListener('click', function () { if (!hideSyntax()) send(); });
 
-  // Tres toques rápidos en cualquier parte de la franja (menos de 0,5 s entre cada uno)
+  // Tres toques rápidos en cualquier parte de la franja (menos de 0,3 s entre cada uno)
   // la dejan vacía con un cursor intermitente. Los deslizamientos no cuentan.
   var taps = 0, lastTap = 0, tapX = 0, tapY = 0;
   chatEl.addEventListener('touchstart', function (e) {
@@ -422,7 +422,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     var t = e.changedTouches[0];
     if (Math.abs(t.clientX - tapX) > 10 || Math.abs(t.clientY - tapY) > 10) { taps = 0; return; }
     var now = Date.now();
-    taps = (now - lastTap < 500) ? taps + 1 : 1;
+    taps = (now - lastTap < 300) ? taps + 1 : 1;
     lastTap = now;
     if (taps >= 3) {
       taps = 0;
