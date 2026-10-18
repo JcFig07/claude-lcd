@@ -72,9 +72,12 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
 #viewHint{position:absolute;left:4px;bottom:3px;font-size:14px;line-height:1;padding:1px 4px;background:#9bbc0f;border-radius:2px;display:none;pointer-events:none}
 .camera-on #view,.camera-on #viewHint{display:block}
 /* Pantalla de error tipo calculadora Casio (3 toques seguidos en ENVIAR) */
-#syntax{position:absolute;inset:0;z-index:3;display:none;flex-direction:column;justify-content:center;padding:2px 10px;font-size:20px;line-height:1.05;white-space:pre;text-transform:none;background-color:#9bbc0f}
-#syntax .ind{position:absolute;top:2px;left:0;right:0;font-size:11px;line-height:1;white-space:pre}
+#chat{position:relative}
+#syntax{position:absolute;top:6px;left:8px;right:8px;bottom:8px;z-index:5;box-sizing:border-box;border:2px solid #8eae12;border-radius:4px;display:none;align-items:center;justify-content:center;padding-top:10px;text-transform:none}
+#syntax .txt{position:relative;font-size:26px;line-height:1;white-space:pre}
+#syntax .ind{position:absolute;top:-11px;right:0;font-size:12px;line-height:1;white-space:pre}
 .syntax-on #syntax{display:flex}
+.syntax-on .screen,.syntax-on .side{visibility:hidden}
 .camera-on .head,.camera-on .out,.camera-on .arrow,.camera-on #track{visibility:hidden}
 .camera-on #cam svg,.camera-on #cam #thumb{display:none}
 .camera-on #cam::after{content:'X';font-size:14px}
@@ -98,9 +101,6 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       <div id="track" aria-hidden="true"><div id="thumb2"></div></div>
       <video id="view" playsinline muted autoplay></video>
       <div id="viewHint" class="ink">TOCA AQUI O FOTO</div>
-      <div id="syntax" class="lcd ink" aria-live="assertive"><span class="ind">                    S  Math</span>  Syntax ERROR
-[AC]  :Cancel
-[◄][►]:Goto</div>
     </div>
     <div class="side">
       <button class="key" id="cam" aria-label="Adjuntar foto">
@@ -109,6 +109,9 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
       </button>
       <button class="key key-accent" id="send">ENVIAR</button>
     </div>
+    <div id="syntax" class="lcd ink" aria-live="assertive"><div class="txt"><span class="ind">S  Math</span>  Syntax ERROR
+[AC]  :Cancel
+[◄][►]:Goto</div></div>
   </div>
 
   <!-- CONFIG -->
@@ -415,7 +418,7 @@ body{font-family:'VT323',monospace;text-transform:uppercase;-webkit-text-size-ad
     taps++;
     clearTimeout(tapTimer);
     if (taps >= 3) { taps = 0; showSyntax(); return; }
-    tapTimer = setTimeout(function () { taps = 0; send(); }, 350);
+    tapTimer = setTimeout(function () { taps = 0; send(); }, 500);
   });
 
   function showSyntax() {
